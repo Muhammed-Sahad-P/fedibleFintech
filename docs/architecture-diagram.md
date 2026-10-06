@@ -3,36 +3,34 @@
 ## 1. System Architecture Diagram
 
 ```mermaid
-graph TD
-    subgraph Client_Tier["Client & External Ingress"]
-        ClientApp["Client Application (Web / Mobile / Third-Party)"]
+flowchart TD
+    subgraph Ingress["1. Ingress & Client Tier"]
+        ClientApp["Client Application\n(Web / Mobile / Third-Party)"]
+        Gateway["API Gateway / ALB\n• TLS 1.3 Termination\n• Correlation ID (X-Correlation-ID)\n• Security Headers (Helmet)"]
     end
 
-    subgraph Edge_Security["Edge & Security Layer"]
-        Gateway["API Gateway / Reverse Proxy (NGINX / ALB)<br/>• TLS 1.3 Termination<br/>• Correlation ID (X-Correlation-ID)<br/>• Security Headers (Helmet)"]
+    subgraph CoreServices["2. Fedible Backend Services (Node.js 20 / TypeScript)"]
+        AuthService["Auth & Identity Service\n• JWT Authentication\n• Role-Based Access Control\n• bcrypt Password Hashing"]
+        FeditscoreService["Feditscore Engine\n• Weighted Category Scoring\n• Risk Tier Classifier\n• Cache-Aside Invalidation"]
+        PaymentService["Payment Orchestrator\n• State Machine: PENDING → SUCCESS/FAILED\n• HMAC-SHA256 Webhook Verification\n• Inbox Pattern Deduplication"]
+        FEFFService["FEFF Document Vault\n• Magic-Byte MIME Validation\n• SHA-256 Integrity Hashing\n• Multi-Tenant 404 Isolation"]
+        AIAssistantService["AI Financial Advisor\n• Data Minimisation (Numbers only)\n• Zero Identifier Transmission\n• Heuristic Fallback Engine"]
     end
 
-    subgraph Application_Tier["Fedible Backend Core Services (Node.js 20 / TypeScript)"]
-        AuthService["Auth & Identity Service<br/>• JWT Bearer Authentication<br/>• Role-Based Access Control (USER, ADMIN)<br/>• bcrypt Password Hashing"]
-        FeditscoreService["Feditscore Engine<br/>• Weighted Category Scoring<br/>• Risk Tier Classifier<br/>• Cache-Aside & Invalidation"]
-        PaymentService["Payment Orchestrator<br/>• State Machine (PENDING → SUCCESS / FAILED)<br/>• HMAC Webhook Verification<br/>• Inbox Pattern Deduplication<br/>• Background Crash Reconciler"]
-        FEFFService["FEFF Document Vault<br/>• Magic-Byte MIME Validation<br/>• SHA-256 Integrity Hashing<br/>• Multi-Tenant Isolation (404 on breach)"]
-        AIAssistantService["AI Financial Advisor<br/>• Data Minimisation (Numbers only)<br/>• Zero Identifier Transmission<br/>• Heuristic Fallback Engine"]
+    subgraph StorageLayer["3. Storage & Caching Tier"]
+        PostgreSQL[("PostgreSQL 16 (Primary ACID Ledger)\n• SELECT FOR UPDATE Row Locks\n• Minor Currency Units (BIGINT amount_minor)\n• UNIQUE(event_id), UNIQUE(gateway_tx_id)\n• Append-Only Audit Logs")]
+        RedisCache[("Redis 7.2 Cache & Rate Limiter\n• Score Caching (TTL 1hr)\n• Fixed-Window Rate Limiting\n• Sub-2ms Read Latency")]
+        StorageVault[("FEFF Document Vault\n• Isolated Storage Paths\n• Magic-Byte Whitelisting")]
     end
 
-    subgraph Data_Caching_Tier["Storage & Caching Tier"]
-        PostgreSQL[("PostgreSQL 16 (Primary DB)<br/>• ACID Ledger & Row Locks (SELECT FOR UPDATE)<br/>• Minor Currency Units (BIGINT amount_minor)<br/>• UNIQUE(event_id), UNIQUE(gateway_tx_id)<br/>• Append-Only Audit Logs")]
-        RedisCache[("Redis 7.2 Cache & Rate Limiting<br/>• Score Caching (TTL 1hr)<br/>• Fixed-Window Rate Limiting<br/>• Sub-2ms Read Latency")]
-        StorageVault[("Document Storage (S3 / Local Encrypted)<br/>• Isolated UUID File Paths<br/>• Non-executable permissions")]
+    subgraph ExternalTier["4. External Providers & Background Workers"]
+        PaymentGateway["Payment Gateway (Mock / Razorpay)\n• Cryptographic Webhook Delivery\n• Settlement Audit Ledger"]
+        ReconcilerWorker["Reconciliation Worker (Admin Only)\n• Automated Crash Recovery\n• Heals Orphaned Gateway Charges"]
+        LLMProvider["Google Gemini / LLM Provider\n• Stateless Prompt Evaluation"]
     end
 
-    subgraph External_Services["External Providers"]
-        PaymentGateway["Payment Gateway (Mock / Razorpay / Stripe)<br/>• Cryptographic Webhook Delivery<br/>• Settlement Reconciliation API"]
-        LLMProvider["Google Gemini / LLM Provider<br/>• Stateless Prompt Evaluation"]
-    end
-
-    %% Ingress Connections
-    ClientApp -->|HTTPS / REST| Gateway
+    %% Ingress Flow
+    ClientApp --> Gateway
     Gateway --> AuthService
     Gateway --> FeditscoreService
     Gateway --> PaymentService
@@ -42,15 +40,16 @@ graph TD
     %% Service to Storage
     AuthService --> PostgreSQL
     FeditscoreService --> PostgreSQL
-    FeditscoreService <-->|Cache HIT / MISS / Invalidate| RedisCache
-    PaymentService -->|SELECT FOR UPDATE / Inbox Pattern| PostgreSQL
+    FeditscoreService -.-> RedisCache
+    PaymentService --> PostgreSQL
     FEFFService --> PostgreSQL
     FEFFService --> StorageVault
     AIAssistantService --> LLMProvider
 
-    %% External Gateway Ingress
-    PaymentGateway -->|Signed Webhook (HMAC-SHA256)| PaymentService
-    PaymentService -.->|Periodic Query (Reconciler Backup)| PaymentGateway
+    %% Gateway & Reconciler
+    PaymentGateway -->|"Signed Webhook (HMAC-SHA256)"| PaymentService
+    ReconcilerWorker -->|"Settlement Audit Query"| PaymentGateway
+    ReconcilerWorker -->|"Auto-Heal Orphaned Records"| PostgreSQL
 ```
 
 ---
