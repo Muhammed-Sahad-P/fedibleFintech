@@ -19,7 +19,7 @@ flowchart TD
 
     subgraph StorageLayer["3. Storage & Caching Tier"]
         PostgreSQL[("PostgreSQL 16 (Primary ACID Ledger)\n• SELECT FOR UPDATE Row Locks\n• Minor Currency Units (BIGINT amount_minor)\n• UNIQUE(event_id), UNIQUE(gateway_tx_id)\n• Append-Only Audit Logs")]
-        RedisCache[("Redis 7.2 Cache & Rate Limiter\n• Score Caching (TTL 1hr)\n• Fixed-Window Rate Limiting\n• Sub-2ms Read Latency")]
+        RedisCache[("Redis 7.2 Cache & Rate Limiter\n• Score Caching (TTL 1hr)\n• Fixed-Window Rate Limiting")]
         StorageVault[("FEFF Document Vault\n• Isolated Storage Paths\n• Magic-Byte Whitelisting")]
     end
 

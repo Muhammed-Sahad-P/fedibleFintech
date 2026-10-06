@@ -1,6 +1,8 @@
 import { db } from '../../database/pool';
 import { paymentRepository } from './payment.repository';
 import { mockPaymentGateway } from './mock-gateway.service';
+import { ForbiddenError } from '../../utils/errors';
+import { config } from '../../config';
 import { logger } from '../../utils/logger';
 
 export interface ReconciliationResult {
@@ -108,6 +110,10 @@ export class ReconciliationService {
    * 3. Drops the webhook to simulate DB outage
    */
   async simulateCrashScenario(userId: string) {
+    if (config.isProduction) {
+      throw new ForbiddenError('Crash simulation helper is disabled in production environment');
+    }
+
     const referenceId = `REF_CRASH_SIM_${Date.now()}`;
     const amountMinor = 1000000; // ₹10,000.00
 

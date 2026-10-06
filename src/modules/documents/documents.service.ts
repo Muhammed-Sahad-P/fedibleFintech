@@ -151,6 +151,45 @@ export class DocumentsService {
   }
 
   /**
+   * Generates a 5-minute cryptographic HMAC-SHA256 download token for secure browser downloads
+   */
+  generateDownloadToken(documentId: string, userId: string, expirySeconds: number = 300): { token: string; expiresAt: number } {
+    const expiresAt = Math.floor(Date.now() / 1000) + expirySeconds;
+    const payload = `${documentId}:${userId}:${expiresAt}`;
+    const token = crypto
+      .createHmac('sha256', config.jwt.secret)
+      .update(payload)
+      .digest('hex');
+    return { token, expiresAt };
+  }
+
+  /**
+   * Verifies an HMAC-SHA256 download token with expiry and timing-safe comparison
+   */
+  verifyDownloadToken(documentId: string, userId: string, token: string, expiresAt: number): boolean {
+    const now = Math.floor(Date.now() / 1000);
+    if (now > expiresAt) {
+      return false;
+    }
+    const payload = `${documentId}:${userId}:${expiresAt}`;
+    const expectedToken = crypto
+      .createHmac('sha256', config.jwt.secret)
+      .update(payload)
+      .digest('hex');
+
+    try {
+      const expectedBuffer = Buffer.from(expectedToken, 'utf8');
+      const receivedBuffer = Buffer.from(token, 'utf8');
+      if (expectedBuffer.length !== receivedBuffer.length) {
+        return false;
+      }
+      return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * 4. Downloads document with ownership validation & streaming
    */
   async getDocumentForDownload(documentId: string, userId: string, ipAddress?: string) {

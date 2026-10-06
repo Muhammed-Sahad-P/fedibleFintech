@@ -103,13 +103,44 @@ describe('FEFF Document Vault Security & Tenant Isolation Tests', () => {
     expect(jsonRes.body.success).toBe(true);
     expect(jsonRes.body.data.downloadUrl).toBeDefined();
 
-    // 2. Raw binary stream request
-    const rawRes = await request(app)
-      .get(`/api/v1/documents/${documentId}/download?raw=true`)
-      .set('Authorization', `Bearer ${userAToken}`);
+    const signedUrl = jsonRes.body.data.downloadUrl;
+    const urlObj = new URL(signedUrl);
+    const token = urlObj.searchParams.get('token');
+    const expires = urlObj.searchParams.get('expires');
+    const uid = urlObj.searchParams.get('uid');
 
-    expect(rawRes.status).toBe(200);
-    expect(rawRes.headers['content-type']).toBe('application/pdf');
+    expect(token).toBeDefined();
+    expect(expires).toBeDefined();
+    expect(uid).toBeDefined();
+
+    // 2. Browser signed download (WITHOUT any Authorization Bearer header)
+    const signedDownloadRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/download?raw=true&token=${token}&expires=${expires}&uid=${uid}`);
+
+    expect(signedDownloadRes.status).toBe(200);
+    expect(signedDownloadRes.headers['content-type']).toBe('application/pdf');
+
+    // 3. Expired signed link rejection
+    const expiredTimestamp = Math.floor(Date.now() / 1000) - 100;
+    const expiredRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/download?raw=true&token=${token}&expires=${expiredTimestamp}&uid=${uid}`);
+
+    expect(expiredRes.status).toBe(401);
+    expect(expiredRes.body.success).toBe(false);
+
+    // 4. Tampered token rejection
+    const tamperedRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/download?raw=true&token=tampered_fake_token_12345&expires=${expires}&uid=${uid}`);
+
+    expect(tamperedRes.status).toBe(401);
+    expect(tamperedRes.body.success).toBe(false);
+
+    // 5. Signed token for a different document ID rejection
+    const fakeDocId = '00000000-0000-0000-0000-000000000000';
+    const diffDocRes = await request(app)
+      .get(`/api/v1/documents/${fakeDocId}/download?raw=true&token=${token}&expires=${expires}&uid=${uid}`);
+
+    expect(diffDocRes.status).toBe(401);
   });
 
   it('should allow User A to delete their document (200 OK)', async () => {

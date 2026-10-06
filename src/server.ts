@@ -11,7 +11,11 @@ async function bootstrap() {
     logger.info('Initializing Fedible Fintech database...');
     try {
       await runMigrations();
-      await seedDatabase();
+      if (config.nodeEnv !== 'production') {
+        await seedDatabase();
+      } else {
+        logger.info('Production environment detected: skipping automated database seeding.');
+      }
     } catch (dbErr: any) {
       logger.warn('Database initialization warning (will retry on next request)', { error: dbErr.message });
     }
