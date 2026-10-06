@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fedible-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fedible_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - fedible_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fedible_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: fedible-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - fedible_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fedible-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fedible_db
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: fedible_db
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: fedible_production_grade_super_secret_jwt_key_2026
+      WEBHOOK_SECRET: whsec_fedible_fintech_secure_hmac_signing_key_9988
+      UPLOAD_DIR: ./uploads
+      ENABLE_MOCK_AI: "true"
+      ENABLE_DEBUG_BENCHMARKS: "true"
+    ports:
+      - "4000:4000"
+    volumes:
+      - fedible_uploads:/app/uploads
+
+volumes:
+  fedible_pgdata:
+  fedible_redisdata:
+  fedible_uploads:
