@@ -9,6 +9,7 @@ import { paymentRoutes } from './modules/payment/payment.routes';
 import { documentsRoutes } from './modules/documents/documents.routes';
 import { aiAssistantRoutes } from './modules/ai-assistant/ai-assistant.routes';
 import { debuggingRoutes } from './modules/debugging/debugging.routes';
+import { swaggerRoutes } from './docs/swagger';
 import { db } from './database/pool';
 import { redis } from './redis/client';
 
@@ -31,6 +32,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Correlation ID & Request Logger
 app.use(requestLogger);
 
+// Interactive Swagger UI Documentation
+app.use('/docs', swaggerRoutes);
+app.use('/api-docs', swaggerRoutes);
+
 // Health Check Probe
 app.get('/health', async (req, res) => {
   const isDbHealthy = await db.healthCheck();
@@ -47,6 +52,7 @@ app.get('/health', async (req, res) => {
       redis: isRedisHealthy ? 'UP' : 'DEGRADED',
     },
     version: '1.0.0',
+    docs: 'http://localhost:4000/docs',
   });
 });
 
@@ -58,6 +64,11 @@ app.use('/api/v1', paymentRoutes);
 app.use('/api/v1', aiAssistantRoutes);
 app.use('/api/v1/debug', debuggingRoutes);
 
+// Root Welcome Route redirecting to /docs
+app.get('/', (req, res) => {
+  res.redirect('/docs');
+});
+
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({
@@ -65,6 +76,7 @@ app.use((req, res) => {
     error: {
       message: `Cannot ${req.method} ${req.originalUrl}`,
       code: 'ROUTE_NOT_FOUND',
+      documentation: 'http://localhost:4000/docs',
     }
   });
 });
