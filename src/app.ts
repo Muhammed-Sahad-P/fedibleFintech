@@ -6,15 +6,17 @@ import { errorHandler } from './middlewares/error.middleware';
 import { authRoutes } from './modules/auth/auth.routes';
 import { assessmentRoutes } from './modules/assessment/assessment.routes';
 import { paymentRoutes } from './modules/payment/payment.routes';
+import { documentsRoutes } from './modules/documents/documents.routes';
+import { aiAssistantRoutes } from './modules/ai-assistant/ai-assistant.routes';
+import { debuggingRoutes } from './modules/debugging/debugging.routes';
 import { db } from './database/pool';
 import { redis } from './redis/client';
-import { sendSuccess } from './utils/response';
 
 const app = express();
 
 // Security Middlewares
 app.use(helmet({
-  contentSecurityPolicy: false, // API server
+  contentSecurityPolicy: false,
 }));
 app.use(cors({
   origin: '*',
@@ -22,7 +24,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Webhook-Signature', 'Idempotency-Key'],
 }));
 
-// Body Parsers (raw webhook parsing will be mounted before json parser if needed)
+// Body Parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -51,7 +53,10 @@ app.get('/health', async (req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/assessment', assessmentRoutes);
+app.use('/api/v1/documents', documentsRoutes);
 app.use('/api/v1', paymentRoutes);
+app.use('/api/v1', aiAssistantRoutes);
+app.use('/api/v1/debug', debuggingRoutes);
 
 // 404 Handler
 app.use((req, res) => {
