@@ -5,6 +5,7 @@ import { requestLogger } from './middlewares/request-logger.middleware';
 import { errorHandler } from './middlewares/error.middleware';
 import { authRoutes } from './modules/auth/auth.routes';
 import { assessmentRoutes } from './modules/assessment/assessment.routes';
+import { paymentRoutes } from './modules/payment/payment.routes';
 import { db } from './database/pool';
 import { redis } from './redis/client';
 import { sendSuccess } from './utils/response';
@@ -50,6 +51,7 @@ app.get('/health', async (req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/assessment', assessmentRoutes);
+app.use('/api/v1', paymentRoutes);
 
 // 404 Handler
 app.use((req, res) => {
