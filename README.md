@@ -8,7 +8,7 @@
 [![Tests](https://img.shields.io/badge/Tests-27%2F27_Passing-success.svg)](https://github.com/Muhammed-Sahad-P/fedibleFintech)
 [![Swagger](https://img.shields.io/badge/Swagger_UI-OpenAPI_3.0-85EA2D.svg?logo=swagger)](http://localhost:4000/docs)
 
-A production-grade, highly reliable fintech backend engine engineered for the **Fedible 24-Hour Backend / Fintech Engineering Assessment**.
+A production-grade, highly reliable fintech backend engine engineered for the **Fedible Backend / Fintech Engineering Assessment**.
 
 Built with **PostgreSQL ACID transaction boundaries**, **inbox-pattern webhook idempotency**, **Redis L2 response caching & rate limiting**, **FEFF multi-tenant document isolation with magic-byte verification**, **automated distributed crash reconciliation**, and **AI-driven financial health analysis with strict data minimisation**.
 
