@@ -93,13 +93,23 @@ describe('FEFF Document Vault Security & Tenant Isolation Tests', () => {
     expect(res.status).toBe(404);
   });
 
-  it('should allow User A to download their own document (200 OK)', async () => {
-    const res = await request(app)
+  it('should allow User A to get download link and download raw document (200 OK)', async () => {
+    // 1. JSON link request
+    const jsonRes = await request(app)
       .get(`/api/v1/documents/${documentId}/download`)
       .set('Authorization', `Bearer ${userAToken}`);
 
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toBe('application/pdf');
+    expect(jsonRes.status).toBe(200);
+    expect(jsonRes.body.success).toBe(true);
+    expect(jsonRes.body.data.downloadUrl).toBeDefined();
+
+    // 2. Raw binary stream request
+    const rawRes = await request(app)
+      .get(`/api/v1/documents/${documentId}/download?raw=true`)
+      .set('Authorization', `Bearer ${userAToken}`);
+
+    expect(rawRes.status).toBe(200);
+    expect(rawRes.headers['content-type']).toBe('application/pdf');
   });
 
   it('should allow User A to delete their document (200 OK)', async () => {

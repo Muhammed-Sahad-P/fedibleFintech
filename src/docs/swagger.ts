@@ -331,9 +331,34 @@ export const swaggerDocument = {
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'raw', in: 'query', required: false, schema: { type: 'boolean', default: false }, description: 'Set to true to stream raw binary bytes directly' },
         ],
         responses: {
-          200: { description: 'File stream' },
+          200: {
+            description: 'Document download metadata and direct download URL',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string', example: 'Document ready for download' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        documentId: { type: 'string', format: 'uuid' },
+                        fileName: { type: 'string', example: 'sample_bank_statement.pdf' },
+                        mimeType: { type: 'string', example: 'application/pdf' },
+                        fileSizeBytes: { type: 'integer', example: 469 },
+                        fileHashSha256: { type: 'string' },
+                        downloadUrl: { type: 'string', example: 'http://localhost:4000/api/v1/documents/UUID/download?raw=true' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           404: { description: 'Not found (Anti-enumeration)' },
         },
       },

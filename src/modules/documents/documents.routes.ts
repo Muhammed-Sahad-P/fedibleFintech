@@ -30,16 +30,16 @@ router.get(
   (req, res, next) => documentsController.list(req, res, next)
 );
 
-// 3. Get Document Metadata
-router.get(
-  '/:id',
-  (req, res, next) => documentsController.getMetadata(req, res, next)
-);
-
-// 4. Download Document Stream
+// 3. Download Document Stream
 router.get(
   '/:id/download',
   (req, res, next) => documentsController.download(req, res, next)
+);
+
+// 4. Get Document Metadata
+router.get(
+  '/:id',
+  (req, res, next) => documentsController.getMetadata(req, res, next)
 );
 
 // 5. Delete Document

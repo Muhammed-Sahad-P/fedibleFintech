@@ -66,10 +66,10 @@ export class PaymentRepository {
     return result.rows[0];
   }
 
-  async findByReferenceId(referenceId: string): Promise<TransactionEntity | null> {
+  async findByReferenceId(identifier: string): Promise<TransactionEntity | null> {
     const result = await db.query<TransactionEntity>(
-      'SELECT * FROM transactions WHERE reference_id = $1',
-      [referenceId]
+      'SELECT * FROM transactions WHERE reference_id = $1 OR id::text = $1',
+      [identifier]
     );
     return result.rows[0] || null;
   }

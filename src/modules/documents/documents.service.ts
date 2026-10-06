@@ -174,9 +174,11 @@ export class DocumentsService {
     }
 
     return {
+      id: doc.id,
       filePath: doc.storage_path,
       fileName: doc.file_name,
       mimeType: doc.mime_type,
+      fileHashSha256: doc.file_hash_sha256,
     };
   }
 

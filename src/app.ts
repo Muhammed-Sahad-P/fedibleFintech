@@ -22,7 +22,8 @@ app.use(helmet({
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Webhook-Signature', 'Idempotency-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Webhook-Signature', 'Idempotency-Key', 'Accept'],
+  exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type', 'X-Cache', 'X-Correlation-ID'],
 }));
 
 // Body Parsers
