@@ -12,9 +12,10 @@ router.post(
   (req, res, next) => paymentController.handleWebhook(req, res, next)
 );
 
-// 2. Mock Gateway Checkout Simulator (For testing & demo flow)
+// 2. Mock Gateway Checkout Simulator (For testing & demo flow, authenticated)
 router.post(
   '/payments/mock-gateway/process',
+  authenticateJwt,
   (req, res, next) => paymentController.processMockPayment(req, res, next)
 );
 

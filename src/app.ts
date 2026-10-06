@@ -26,8 +26,13 @@ app.use(cors({
   exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type', 'X-Cache', 'X-Correlation-ID'],
 }));
 
-// Body Parsers
-app.use(express.json({ limit: '10mb' }));
+// Body Parsers with Raw Body preservation for cryptographic HMAC verification
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Correlation ID & Request Logger

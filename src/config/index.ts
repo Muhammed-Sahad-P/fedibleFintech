@@ -1,10 +1,21 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction) {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('Fatal Configuration Error: JWT_SECRET must be defined in production environment.');
+  }
+  if (!process.env.WEBHOOK_SECRET) {
+    throw new Error('Fatal Configuration Error: WEBHOOK_SECRET must be defined in production environment.');
+  }
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '4000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  isProduction: process.env.NODE_ENV === 'production',
+  isProduction,
   
   db: {
     url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/fedible_db',
@@ -26,12 +37,12 @@ export const config = {
   },
   
   jwt: {
-    secret: process.env.JWT_SECRET || 'fedible_production_grade_super_secret_jwt_key_2026',
+    secret: process.env.JWT_SECRET || (isProduction ? '' : 'fedible_production_grade_super_secret_jwt_key_2026'),
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   
   webhook: {
-    secret: process.env.WEBHOOK_SECRET || 'whsec_fedible_fintech_secure_hmac_signing_key_9988',
+    secret: process.env.WEBHOOK_SECRET || (isProduction ? '' : 'whsec_fedible_fintech_secure_hmac_signing_key_9988'),
   },
   
   storage: {

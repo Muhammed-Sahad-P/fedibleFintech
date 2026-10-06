@@ -1,16 +1,16 @@
-# Fedible — Production Fintech Backend & Financial Engineering Engine
+# Fedible — Fintech Backend & Financial Engineering Engine
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-v20_LTS-green.svg?logo=node.js)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg?logo=postgresql)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7.2-red.svg?logo=redis)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-27%2F27_Passing-success.svg)](https://github.com/Muhammed-Sahad-P/fedibleFintech)
+[![Tests](https://img.shields.io/badge/Tests-36%2F36_Passing-success.svg)](https://github.com/Muhammed-Sahad-P/fedibleFintech)
 [![Swagger](https://img.shields.io/badge/Swagger_UI-OpenAPI_3.0-85EA2D.svg?logo=swagger)](http://localhost:4000/docs)
 
-A production-grade, highly reliable fintech backend engine engineered for the **Fedible Backend / Fintech Engineering Assessment**.
+A reliable, resilient fintech backend engine engineered for the **Fedible Backend / Fintech Engineering Assessment**.
 
-Built with **PostgreSQL ACID transaction boundaries**, **inbox-pattern webhook idempotency**, **Redis L2 response caching & rate limiting**, **FEFF multi-tenant document isolation with magic-byte verification**, **automated distributed crash reconciliation**, and **AI-driven financial health analysis with strict data minimisation**.
+Built with **PostgreSQL ACID transaction boundaries**, **inbox-pattern webhook idempotency**, **Redis L2 response caching & rate limiting**, **FEFF multi-tenant document isolation with magic-byte verification**, **distributed crash reconciliation**, and **AI-driven financial health analysis with strict data minimisation**.
 
 ---
 
@@ -29,6 +29,7 @@ Built with **PostgreSQL ACID transaction boundaries**, **inbox-pattern webhook i
   - [6. AI Financial Assistant](#6-ai-financial-assistant-task-9)
   - [7. Production SQL Debugging Challenge](#7-production-sql-debugging-challenge-task-10)
 - [Automated Testing Suite](#-automated-testing-suite)
+- [Known Limitations & Production Considerations](#️-known-limitations--production-considerations)
 - [Decisions & Engineering Trade-offs](#-decisions--engineering-trade-offs)
 - [AWS Production Architecture](#-aws-production-architecture)
 
@@ -62,7 +63,7 @@ flowchart TD
 
     subgraph StorageLayer["3. Storage & Caching Tier"]
         PostgreSQL[("PostgreSQL 16 (Primary ACID Ledger)\n• SELECT FOR UPDATE Row Locks\n• Minor Currency Units (BIGINT amount_minor)\n• UNIQUE(event_id), UNIQUE(gateway_tx_id)\n• Append-Only Audit Logs")]
-        RedisCache[("Redis 7.2 Cache & Rate Limiter\n• Score Caching (TTL 1hr)\n• Fixed-Window Rate Limiting\n• Sub-2ms Read Latency")]
+        RedisCache[("Redis 7.2 Cache & Rate Limiter\n• Score Caching (TTL 1hr)\n• Fixed-Window Rate Limiting")]
         StorageVault[("FEFF Document Vault Storage\n• Isolated Storage Paths\n• Magic-Byte Whitelisting")]
     end
 
@@ -113,6 +114,8 @@ docker compose up --build -d
 # 3. View live server logs
 docker compose logs -f api
 ```
+
+> **Note on Environments**: `docker-compose.yml` runs in `NODE_ENV=development` (demo mode) so that all canonical questions and demo users are auto-seeded on startup. In production mode (`NODE_ENV=production`), automatic database seeding is skipped, and missing `JWT_SECRET` or `WEBHOOK_SECRET` environment variables will trigger a fatal startup exception.
 
 - 🌐 **Interactive Swagger UI**: `http://localhost:4000/docs`
 - 💓 **Health Check Probe**: `http://localhost:4000/health`
@@ -349,7 +352,7 @@ Pre-generated test files are included in the repository root for testing:
       "metrics": {
         "monthlySurplus": 85000,
         "savingsRatePercentage": 56.7,
-        "debtToIncomePercentage": 6.7,
+        "debtToAnnualIncomePercentage": 6.7,
         "emergencyFundMonths": 6.2
       },
       "keyInsights": [
@@ -386,16 +389,26 @@ npm test
 
 ```
  Test Files  6 passed (6)
-      Tests  27 passed (27)
-   Duration  4.92s
+      Tests  36 passed (36)
+   Duration  6.35s
 
- ✓ tests/assessment.test.ts (5 tests)
- ✓ tests/payment-webhook.test.ts (4 tests)
  ✓ tests/documents.test.ts (6 tests)
+ ✓ tests/payment-webhook.test.ts (9 tests)
+ ✓ tests/assessment.test.ts (8 tests)
  ✓ tests/ai-assistant.test.ts (3 tests)
  ✓ tests/reconciliation.test.ts (3 tests)
  ✓ tests/auth.test.ts (5 tests)
 ```
+
+---
+
+## ⚠️ Known Limitations & Production Considerations
+
+1. **Document Storage (Local FS vs AWS S3)**: For standalone local container evaluation, documents are stored in the local storage directory with magic-byte validation and SHA-256 checksums. In AWS production, offload to private S3 buckets using temporary pre-signed PUT/GET URLs and AWS KMS encryption.
+2. **Scheduled Reconciliation Invocation**: Payment reconciliation is implemented as an atomic, idempotent, row-locked API (`POST /api/v1/payments/reconcile`) intended to be triggered periodically via AWS EventBridge, K8s CronJobs, or a serverless worker.
+3. **AI Financial Vector Sensitivity**: While strict data minimisation strips all personal identifiers (names, emails, IDs) before reaching Google Gemini, numeric financial vectors remain sensitive non-public financial information (NPI) requiring enterprise zero-retention API contracts in SOC2/GDPR environments.
+4. **Multi-Region Locking**: Single-primary PostgreSQL pessimistic row locking (`SELECT ... FOR UPDATE`) guarantees strict ACID ledger consistency for single-region deployments. For active-active multi-region topologies, distributed multi-region consensus or Redis Redlock would be integrated.
+5. **Webhook Replay Window (300 Seconds)**: Webhooks with timestamps older than 300 seconds are rejected to prevent replay attacks. Upstream gateway retries delayed beyond 300 seconds must re-sign the payload with a refreshed timestamp, or be recovered via the reconciliation endpoint.
 
 ---
 
@@ -412,7 +425,7 @@ npm test
    - *Trade-off*: Prevents attackers from scanning and enumerating valid document IDs across tenants.
 4. **Data Minimisation over Free-Text LLM Prompts**:
    - *Decision*: The AI Assistant endpoint accepts strictly numeric financial parameters and enum goals, rejecting free-text notes.
-   - *Trade-off*: Guarantees zero PII leaks (names, SSN/Aadhaar, emails) to external LLMs.
+   - *Trade-off*: Data minimisation: only numeric inputs and enum goals are sent; no names, emails or account numbers.
 
 ---
 

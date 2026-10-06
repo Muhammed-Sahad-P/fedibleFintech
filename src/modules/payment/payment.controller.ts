@@ -34,8 +34,10 @@ export class PaymentController {
    */
   async processMockPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
       const validated = ProcessMockPaymentDto.parse(req.body);
-      const result = await paymentService.processMockPayment(validated, req.ip);
+      const result = await paymentService.processMockPayment(userId, userRole, validated, req.ip);
       sendSuccess(res, result, 'Mock gateway payment processed', 200);
     } catch (error) {
       next(error);
@@ -48,8 +50,9 @@ export class PaymentController {
   async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const signatureHeader = req.headers['x-webhook-signature'] as string | undefined;
+      const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body);
       const validated = PaymentWebhookPayloadDto.parse(req.body);
-      const result = await paymentService.handlePaymentWebhook(validated, signatureHeader, req.ip);
+      const result = await paymentService.handlePaymentWebhook(validated, signatureHeader, rawBody, req.ip);
       sendSuccess(res, result.data, result.message, 200);
     } catch (error) {
       next(error);

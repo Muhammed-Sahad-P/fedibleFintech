@@ -35,6 +35,7 @@ describe('AI Financial Assistant Integration Tests', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.financialHealthScore).toBeGreaterThan(0);
     expect(res.body.data.metrics.savingsRatePercentage).toBe(50);
+    expect(res.body.data.metrics.debtToAnnualIncomePercentage).toBe(10.4);
     expect(res.body.data.metrics.emergencyFundMonths).toBe(5);
     expect(res.body.data.riskTier).toBeDefined();
     expect(res.body.data.keyInsights.length).toBeGreaterThan(0);

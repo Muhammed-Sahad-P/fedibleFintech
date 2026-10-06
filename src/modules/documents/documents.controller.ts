@@ -67,15 +67,20 @@ export class DocumentsController {
         return void res.end(fileBuffer);
       }
 
-      // Default API/Swagger response: Return clean download descriptor with direct download URL
+      // Default API/Swagger response: Return clean download descriptor with signed direct download URL
+      const { token, expiresAt } = documentsService.generateDownloadToken(doc.id, userId, 300);
+      const port = process.env.PORT || 4000;
+      const downloadUrl = `http://localhost:${port}/api/v1/documents/${documentId}/download?raw=true&token=${token}&expires=${expiresAt}&uid=${userId}`;
+
       sendSuccess(res, {
         documentId: doc.id,
         fileName: doc.fileName,
         mimeType: doc.mimeType,
         fileSizeBytes: fileBuffer.length,
         fileHashSha256: doc.fileHashSha256,
-        downloadUrl: `http://localhost:${process.env.PORT || 4000}/api/v1/documents/${documentId}/download?raw=true`,
-        message: 'Click downloadUrl or open it in a browser to download the raw binary file',
+        downloadUrl,
+        expiresInSeconds: 300,
+        message: 'Download URL is cryptographically signed with 5-minute validity',
       }, 'Document ready for download', 200);
     } catch (error) {
       next(error);

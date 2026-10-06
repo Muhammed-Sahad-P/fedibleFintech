@@ -46,7 +46,9 @@ services:
         condition: service_healthy
     environment:
       PORT: 4000
-      NODE_ENV: production
+      # Development / Demo mode: allows auto-seeding demo users and questions on startup
+      # Note: In production mode (NODE_ENV=production), seeding is automatically skipped and real secrets are required.
+      NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fedible_db
       DB_HOST: postgres
       DB_PORT: 5432

@@ -1,7 +1,7 @@
 {
   "name": "fedible-fintech-backend",
   "version": "1.0.0",
-  "description": "Fedible Fintech Backend Assessment - High-reliability, Idempotent, Production-Grade Financial Engine",
+  "description": "Fedible Fintech Backend Assessment - High-reliability, Idempotent Financial Engine",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

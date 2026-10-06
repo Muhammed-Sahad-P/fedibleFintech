@@ -60,7 +60,7 @@ In financial applications, **privacy and security are non-negotiable**. The AI p
     "metrics": {
       "monthlySurplus": 60000,
       "savingsRatePercentage": 50,
-      "debtToIncomePercentage": 10.4,
+      "debtToAnnualIncomePercentage": 10.4,
       "emergencyFundMonths": 5
     },
     "keyInsights": [

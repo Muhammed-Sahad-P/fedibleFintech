@@ -59,9 +59,9 @@ Payment gateways retry failed webhook deliveries using exponential backoff (e.g.
 
 ---
 
-### Tier 2: Automated Reconciliation Worker (Secondary Safety Net)
+### Tier 2: Payment Reconciliation Endpoint (Secondary Safety Net)
 In the event that webhook retries are exhausted or dropped by upstream network firewalls:
-1. **Scheduled Background Worker**: Runs periodically (e.g., every 15 minutes) or triggered on-demand via `POST /api/v1/payments/reconcile` (restricted to `ADMIN` role).
+1. **Reconciliation Trigger**: The reconciler is an admin-triggered endpoint (`POST /api/v1/payments/reconcile`, restricted to `ADMIN` role) designed to be run on a schedule in production (e.g., cron or AWS EventBridge); no scheduler is built into the application process.
 2. **Gateway Settlement Audit**: The worker calls the gateway's settlement API (`listSettledCharges`), retrieving all charges settled within the last time window.
 3. **Discrepancy Identification**: Compares gateway records against internal PostgreSQL `transactions`.
 4. **Autonomous Resolution**: For any transaction found in `PENDING` state:

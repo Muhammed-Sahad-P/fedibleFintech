@@ -9,6 +9,15 @@ export interface RateLimiterOptions {
   keyPrefix?: string;
 }
 
+// Atomic Redis Lua Script: executes INCR and conditional EXPIRE in a single atomic server step
+const ATOMIC_RATE_LIMIT_LUA = `
+  local current = redis.call('INCR', KEYS[1])
+  if current == 1 then
+    redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+  end
+  return current
+`;
+
 export const rateLimiter = (options: RateLimiterOptions = {}) => {
   const windowSeconds = options.windowSeconds || 60;
   const maxRequests = options.maxRequests || 100;
@@ -18,17 +27,15 @@ export const rateLimiter = (options: RateLimiterOptions = {}) => {
     try {
       const client = redis.getClient();
       if (!client) {
-        // Degrade gracefully if Redis is unavailable
+        // Fail open to preserve service availability when Redis is disconnected
         return next();
       }
 
       const identifier = req.user?.id || req.ip || req.socket.remoteAddress || 'anonymous';
       const key = `${keyPrefix}:${identifier}:${Math.floor(Date.now() / 1000 / windowSeconds)}`;
 
-      const currentCount = await client.incr(key);
-      if (currentCount === 1) {
-        await client.expire(key, windowSeconds);
-      }
+      // Atomic execution prevents unexpired orphaned keys on connection interruption
+      const currentCount = await client.eval(ATOMIC_RATE_LIMIT_LUA, 1, key, windowSeconds) as number;
 
       res.setHeader('X-RateLimit-Limit', maxRequests);
       res.setHeader('X-RateLimit-Remaining', Math.max(0, maxRequests - currentCount));
@@ -40,7 +47,8 @@ export const rateLimiter = (options: RateLimiterOptions = {}) => {
 
       next();
     } catch (err: any) {
-      logger.warn('Rate limiter check error, bypassing limit', { error: err.message });
+      // Fail open to maintain high availability if Redis throws during rate limit check
+      logger.warn('Rate limiter check error (failing open to preserve availability)', { error: err.message });
       next();
     }
   };
