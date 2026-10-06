@@ -84,15 +84,16 @@ export class PaymentRepository {
 
   /**
    * Inbox pattern: Inserts raw webhook event atomically.
-   * Returns true if event was newly inserted, false if it already existed (duplicate).
+   * Supports transactional client to guarantee atomic processing with payment status updates.
    */
   async recordWebhookEventInbox(
+    client: PoolClient,
     eventId: string,
     eventType: string,
     rawPayload: any,
     provider: string = 'MOCK_GATEWAY'
-  ): Promise<{ isNew: boolean; event: WebhookEventEntity | null }> {
-    const result = await db.query<WebhookEventEntity>(
+  ): Promise<{ isNew: boolean; event: WebhookEventEntity }> {
+    const result = await client.query<WebhookEventEntity>(
       `INSERT INTO webhook_events (event_id, event_type, provider, raw_payload, processing_status)
        VALUES ($1, $2, $3, $4, 'RECEIVED')
        ON CONFLICT (event_id) DO NOTHING
@@ -104,16 +105,20 @@ export class PaymentRepository {
       return { isNew: true, event: result.rows[0] };
     }
 
-    // Fetch existing event for audit
-    const existing = await db.query<WebhookEventEntity>(
-      'SELECT * FROM webhook_events WHERE event_id = $1',
+    // Fetch and lock existing event row
+    const existing = await client.query<WebhookEventEntity>(
+      'SELECT * FROM webhook_events WHERE event_id = $1 FOR UPDATE',
       [eventId]
     );
-    return { isNew: false, event: existing.rows[0] || null };
+    return { isNew: false, event: existing.rows[0] };
   }
 
-  async markWebhookProcessed(eventId: string, status: 'PROCESSED' | 'FAILED' | 'DUPLICATE') {
-    await db.query(
+  async markWebhookProcessed(
+    clientOrDb: { query: (text: string, params?: any[]) => Promise<any> },
+    eventId: string,
+    status: 'PROCESSED' | 'FAILED' | 'DUPLICATE' | 'REJECTED'
+  ) {
+    await clientOrDb.query(
       `UPDATE webhook_events 
        SET processing_status = $1, processed_at = NOW() 
        WHERE event_id = $2`,

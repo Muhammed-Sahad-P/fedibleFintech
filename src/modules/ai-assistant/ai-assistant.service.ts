@@ -9,7 +9,7 @@ export interface FinancialAssistantResponse {
   metrics: {
     monthlySurplus: number;
     savingsRatePercentage: number;
-    debtToIncomePercentage: number;
+    debtToAnnualIncomePercentage: number;
     emergencyFundMonths: number;
   };
   keyInsights: string[];
@@ -40,6 +40,7 @@ export class AIAssistantService {
     const monthlySurplus = Math.max(0, input.income - input.expenses);
     const savingsRate = Math.min(100, Math.max(0, (monthlySurplus / input.income) * 100));
     const annualIncome = input.income * 12;
+    // Total Debt Balance / Annual Gross Income
     const debtRatio = annualIncome > 0 ? (input.debt / annualIncome) * 100 : 0;
     const emergencyMonths = input.expenses > 0 ? Number((input.savings / input.expenses).toFixed(1)) : 12;
 
@@ -135,7 +136,7 @@ export class AIAssistantService {
       metrics: {
         monthlySurplus: Math.round(metrics.monthlySurplus),
         savingsRatePercentage: Number(metrics.savingsRate.toFixed(1)),
-        debtToIncomePercentage: Number(metrics.debtRatio.toFixed(1)),
+        debtToAnnualIncomePercentage: Number(metrics.debtRatio.toFixed(1)),
         emergencyFundMonths: metrics.emergencyMonths,
       },
       keyInsights,
@@ -200,7 +201,7 @@ Do not include markdown codeblocks or other formatting outside the raw JSON.
       metrics: {
         monthlySurplus: Math.round(metrics.monthlySurplus),
         savingsRatePercentage: Number(metrics.savingsRate.toFixed(1)),
-        debtToIncomePercentage: Number(metrics.debtRatio.toFixed(1)),
+        debtToAnnualIncomePercentage: Number(metrics.debtRatio.toFixed(1)),
         emergencyFundMonths: metrics.emergencyMonths,
       },
       keyInsights: parsed.keyInsights || [],

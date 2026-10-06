@@ -6,7 +6,7 @@ export const swaggerDocument = {
   info: {
     title: 'Fedible Fintech Backend API',
     version: '1.0.0',
-    description: 'Production-grade financial engineering engine with Feditscore, Idempotent Payments, FEFF Document Vault, and AI Financial Assistant.',
+    description: 'Reliable financial engineering engine with Feditscore, Idempotent Payments, FEFF Document Vault, and AI Financial Assistant.',
   },
   servers: [
     {
@@ -186,8 +186,9 @@ export const swaggerDocument = {
     },
     '/api/v1/payments/mock-gateway/process': {
       post: {
-        summary: 'Simulate mock gateway settlement & signed webhook trigger',
+        summary: 'Simulate mock gateway settlement & signed webhook trigger (Authenticated, non-prod)',
         tags: ['Payments & Webhooks'],
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -205,6 +206,8 @@ export const swaggerDocument = {
         },
         responses: {
           200: { description: 'Mock payment processed and webhook delivered' },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden (Disabled in production or caller is not owner)' },
         },
       },
     },
@@ -332,6 +335,9 @@ export const swaggerDocument = {
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'raw', in: 'query', required: false, schema: { type: 'boolean', default: false }, description: 'Set to true to stream raw binary bytes directly' },
+          { name: 'token', in: 'query', required: false, schema: { type: 'string' }, description: 'HMAC-SHA256 signed download token for browser downloads' },
+          { name: 'expires', in: 'query', required: false, schema: { type: 'integer' }, description: 'Unix timestamp expiry for signed download token' },
+          { name: 'uid', in: 'query', required: false, schema: { type: 'string' }, description: 'User ID for signed download token verification' },
         ],
         responses: {
           200: {
@@ -359,6 +365,7 @@ export const swaggerDocument = {
               },
             },
           },
+          401: { description: 'Unauthorized (Missing/invalid JWT or expired/tampered signed download token)' },
           404: { description: 'Not found (Anti-enumeration)' },
         },
       },

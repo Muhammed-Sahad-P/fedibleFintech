@@ -18,24 +18,28 @@ export class MockPaymentGatewayService {
   private settledCharges: Map<string, GatewaySettledCharge> = new Map();
 
   /**
-   * Generates a cryptographic HMAC-SHA256 signature for a webhook payload
+   * Generates a cryptographic HMAC-SHA256 signature for a raw payload string or buffer
    */
-  public generateSignature(payload: string | Record<string, any>): string {
-    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  public generateSignature(payload: string | Buffer | Record<string, any>): string {
+    const rawBytes = Buffer.isBuffer(payload)
+      ? payload
+      : typeof payload === 'string'
+      ? Buffer.from(payload, 'utf8')
+      : Buffer.from(JSON.stringify(payload), 'utf8');
+
     return crypto
       .createHmac('sha256', config.webhook.secret)
-      .update(rawBody)
+      .update(rawBytes)
       .digest('hex');
   }
 
   /**
-   * Verifies an incoming webhook signature using timing-safe comparison
+   * Verifies an incoming webhook signature using timing-safe comparison against exact raw body bytes
    */
-  public verifySignature(payload: string | Record<string, any>, signatureHeader: string | undefined): boolean {
-    if (!signatureHeader) return false;
+  public verifySignature(rawBody: string | Buffer | Record<string, any>, signatureHeader: string | undefined): boolean {
+    if (!signatureHeader || !rawBody) return false;
 
     try {
-      const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
       const expectedSignature = this.generateSignature(rawBody);
 
       const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
@@ -57,6 +61,7 @@ export class MockPaymentGatewayService {
    */
   public simulatePayment(referenceId: string, amountMinor: number, currency: string, outcome: 'SUCCESS' | 'FAILED' = 'SUCCESS'): {
     webhookPayload: PaymentWebhookPayload;
+    rawPayloadString: string;
     signature: string;
     gatewayTxId: string;
   } {
@@ -85,10 +90,13 @@ export class MockPaymentGatewayService {
       timestamp: new Date().toISOString(),
     };
 
-    const signature = this.generateSignature(webhookPayload);
+    // Sign the exact serialized bytes that the gateway emits
+    const rawPayloadString = JSON.stringify(webhookPayload);
+    const signature = this.generateSignature(rawPayloadString);
 
     return {
       webhookPayload,
+      rawPayloadString,
       signature,
       gatewayTxId,
     };

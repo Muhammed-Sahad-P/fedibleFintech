@@ -2,7 +2,7 @@ import { assessmentRepository } from './assessment.repository';
 import { SubmitAnswersInput } from './assessment.dto';
 import { ScoringEngine, QuestionWithAnswer } from './scoring-engine';
 import { redis } from '../../redis/client';
-import { NotFoundError, BadRequestError } from '../../utils/errors';
+import { NotFoundError, BadRequestError, ConflictError } from '../../utils/errors';
 import { logger } from '../../utils/logger';
 
 export class AssessmentService {
@@ -36,19 +36,42 @@ export class AssessmentService {
       throw new NotFoundError('Assessment not found');
     }
 
-    // 1. Fetch relevant questions for scoring validation
-    const questionIds = input.answers.map(a => a.questionId);
-    const questions = await assessmentRepository.getQuestionsByIds(questionIds);
-    const questionMap = new Map(questions.map(q => [q.id, q]));
+    // 1. Reject re-submission to an already completed assessment
+    if (assessment.status === 'COMPLETED') {
+      throw new ConflictError('Assessment has already been completed and cannot be re-submitted');
+    }
 
+    // 2. Reject duplicate question IDs in the submission payload
+    const submittedQuestionIds = input.answers.map(a => a.questionId);
+    const uniqueSubmittedIds = new Set(submittedQuestionIds);
+    if (uniqueSubmittedIds.size !== submittedQuestionIds.length) {
+      throw new BadRequestError('Duplicate answers for the same question are not permitted');
+    }
+
+    // 3. Fetch all active canonical questions to ensure 100% complete question coverage
+    const activeQuestions = await assessmentRepository.getActiveQuestions();
+    const activeQuestionMap = new Map(activeQuestions.map(q => [q.id, q]));
+
+    // Check that every question submitted is a valid, active question
+    for (const qId of submittedQuestionIds) {
+      if (!activeQuestionMap.has(qId)) {
+        throw new BadRequestError(`Question ID '${qId}' is invalid, unknown, or inactive`);
+      }
+    }
+
+    // Reject partial submissions (must answer all active questions)
+    if (submittedQuestionIds.length !== activeQuestions.length) {
+      throw new BadRequestError(
+        `Assessment requires answering all ${activeQuestions.length} active questions. Received ${submittedQuestionIds.length}.`
+      );
+    }
+
+    // 4. Validate option keys and construct scoring entities
     const questionsWithAnswers: QuestionWithAnswer[] = [];
     const answersToSave: Array<{ questionId: string; selectedOptionKey: string; scoreValue: number }> = [];
 
     for (const ans of input.answers) {
-      const q = questionMap.get(ans.questionId);
-      if (!q) {
-        throw new BadRequestError(`Question ID ${ans.questionId} is invalid or inactive`);
-      }
+      const q = activeQuestionMap.get(ans.questionId)!;
 
       const selectedOption = q.options.find(o => o.key === ans.selectedOptionKey);
       if (!selectedOption) {
@@ -70,17 +93,17 @@ export class AssessmentService {
       });
     }
 
-    // 2. Compute Feditscore
+    // 5. Compute Feditscore
     const scoringResult = ScoringEngine.calculate(questionsWithAnswers);
 
-    // 3. Save answers and results in database transaction
+    // 6. Save answers and results in database transaction
     const updatedAssessment = await assessmentRepository.saveAnswersAndScore(
       assessmentId,
       answersToSave,
       scoringResult
     );
 
-    // 4. Invalidate Redis cache for this assessment
+    // 7. Invalidate Redis cache for this assessment
     const cacheKey = `feditscore:assessment:${assessmentId}:result`;
     await redis.del(cacheKey);
     logger.info('Purged Redis score cache on answer submission', { assessmentId, cacheKey });
